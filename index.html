@@ -3,11 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OCASA · CI Intelligence Dashboard</title>
+<title>OCASA · Social Listening & Inteligencia Competitiva</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
+
 :root{
   --navy:#0E1B2E;--blue:#2563a8;--blue-light:#deeaf8;--blue-mid:#4a88c7;
   --gray50:#f8f9fa;--gray100:#f1f3f4;--gray200:#e8eaed;--gray300:#dadce0;
@@ -126,181 +129,475 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:var(--
 .sel{padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:var(--white);font-size:11px;color:var(--gray600);cursor:pointer;outline:none;max-width:170px}
 .sel:focus{border-color:var(--blue)}
 
+
+
+/* ── SENTIMENT SPECIFIC ────────────────────────────── */
+.brd-sub-s{font-size:9px;font-weight:600;color:rgba(255,255,255,.28);letter-spacing:1.4px;text-transform:uppercase;margin-top:2px}
+#fb{background:var(--white);border-bottom:1px solid var(--border);padding:7px 24px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0;transition:all .2s}
+#fb.hidden{display:none}
+.fbl{font-size:9.5px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+select.fs{font-family:'Segoe UI',system-ui,sans-serif;font-size:11px;color:var(--text);background:var(--gray50);border:1px solid var(--border);border-radius:6px;padding:5px 8px;cursor:pointer;outline:none;transition:border-color .18s}
+select.fs:hover,select.fs:focus{border-color:var(--teal)}
+.fsep{width:1px;height:16px;background:var(--border)}
+#freset{font-family:'Segoe UI',system-ui,sans-serif;font-size:11px;color:var(--gray400);cursor:pointer;background:none;border:1px solid var(--border);border-radius:6px;padding:5px 9px;transition:all .18s}
+#freset:hover{border-color:var(--teal);color:var(--teal)}
+.btn-refresh{font-family:'Segoe UI',system-ui,sans-serif;font-size:11px;font-weight:600;background:none;color:var(--teal);border:1px solid var(--teal);border-radius:6px;padding:5px 11px;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:5px}
+.btn-refresh:hover{background:rgba(0,164,153,.08)}
+.btn-refresh.loading{opacity:.5;pointer-events:none}
+/* overlay */
+#overlay{position:fixed;inset:0;background:rgba(14,27,46,.7);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:16px}
+#overlay.hidden{display:none}
+.ov-spinner{width:40px;height:40px;border:3px solid rgba(0,164,153,.3);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ov-txt{font-size:13px;color:rgba(255,255,255,.7);font-weight:500}
+.ov-sub{font-size:11px;color:rgba(255,255,255,.4)}
+/* error banner */
+#errbanner{background:#7f1d1d;color:#fca5a5;font-size:12px;padding:10px 24px;display:none;align-items:center;gap:10px;flex-shrink:0}
+#errbanner a{color:#fca5a5;text-decoration:underline;cursor:pointer}
+/* sentiment sections */
+.sec{display:none;animation:fi .22s ease}
+.sec.on{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.sh h2{font-size:17px;font-weight:700;color:var(--navy);letter-spacing:-.3px}
+.sh p{font-size:12px;color:var(--gray600);margin-top:3px}
+.sh{margin-bottom:16px}
+.kg{display:grid;gap:12px;margin-bottom:16px}
+.k5{grid-template-columns:repeat(5,1fr)}
+.k4{grid-template-columns:repeat(4,1fr)}
+.kc{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:16px 14px;position:relative;overflow:hidden}
+.kl{font-size:9px;font-weight:600;color:var(--gray400);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
+.kv{font-size:28px;font-weight:700;color:var(--text);line-height:1;letter-spacing:-1px}
+.kv.red{color:var(--text)}.kv.grn{color:var(--text)}.kv.amb{color:var(--text)}
+.ks{font-size:10px;color:var(--gray400);margin-top:5px;line-height:1.4}
+.g2s{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g60s{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;margin-bottom:14px}
+.cd{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+.cd:last-child{margin-bottom:0}
+.ct2{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.9px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.ct2 span{color:var(--gray400);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px}
+.cw canvas{max-height:210px}
+.cw.tl canvas{max-height:270px}
+.cw.xl canvas{max-height:320px}
+.pb-s{display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer;padding:2px 3px;border-radius:4px;transition:background .15s}
+.pb-s:hover{background:var(--gray50)}
+.pb-l{font-size:11px;color:var(--text);min-width:200px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-t{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.pb-f{height:100%;border-radius:3px;background:#e53e3e}
+.pb-f.a{background:#d97706}.pb-f.t{background:var(--teal)}
+.pb-n{font-size:10px;font-weight:600;color:var(--gray600);min-width:34px;text-align:right;font-family:monospace}
+.pb-p{font-size:9.5px;color:var(--gray400);min-width:30px;text-align:right;font-family:monospace}
+table.stbl{width:100%;border-collapse:collapse;font-size:11.5px}
+.stbl thead th{font-size:9px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:1px;padding:6px 8px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap;background:var(--white)}
+.stbl tbody td{padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+.stbl tbody tr:last-child td{border-bottom:none}
+.stbl tbody tr:hover td{background:var(--gray50)}
+.pl{display:inline-block;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:600;white-space:nowrap}
+.pl.red{background:rgba(229,62,62,.1);color:#e53e3e}
+.pl.amb{background:rgba(217,119,6,.1);color:#d97706}
+.pl.grn{background:rgba(5,150,105,.1);color:#059669}
+.pl.tl{background:rgba(0,164,153,.1);color:var(--teal)}
+.rv{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:11px 13px;margin-bottom:7px;border-left:3px solid #e53e3e}
+.rv.pos{border-left-color:#059669}
+.rv-h{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+.rv-a{font-size:12px;font-weight:600;color:var(--navy)}
+.rv-m{font-size:9.5px;color:var(--gray400);display:flex;gap:6px}
+.rv-tx{font-size:11.5px;color:var(--gray600);line-height:1.55}
+.rv-tgs{margin-top:5px;display:flex;gap:4px;flex-wrap:wrap}
+.rv-tg{font-size:9px;background:var(--gray50);border:1px solid var(--border);border-radius:20px;padding:2px 7px;color:var(--gray600)}
+#rvl,#rvcl{max-height:440px;overflow-y:auto;padding-right:2px}
+#rvl::-webkit-scrollbar,#rvcl::-webkit-scrollbar{width:4px}
+#rvl::-webkit-scrollbar-thumb,#rvcl::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.rv-empty{padding:26px;text-align:center;color:var(--gray400);font-size:12.5px}
+.mxw{overflow-x:auto}
+.mxt{border-collapse:collapse;font-size:10px;white-space:nowrap;width:100%}
+.mxt th{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;padding:5px 7px;border:1px solid var(--border);background:var(--gray50);color:var(--gray400)}
+.mxt td{padding:4px 7px;border:1px solid var(--border);text-align:center;font-weight:600;font-family:monospace;font-size:10.5px}
+.mxt .rh{text-align:left;font-weight:600;color:var(--text);background:var(--gray50);font-family:'Segoe UI',system-ui;font-size:11px}
+.mc0{color:var(--gray400);font-weight:400}
+.ins{background:var(--white);border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:11.5px;color:var(--gray600);line-height:1.6}
+.ins strong{color:var(--teal)}
+.alr{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:11.5px;color:var(--gray600);line-height:1.6}
+.alr strong{color:#d97706;font-weight:700}
+.note{background:rgba(154,171,190,.07);border:1px solid var(--border);border-radius:8px;padding:9px 13px;margin-bottom:12px;font-size:11px;color:var(--gray400);line-height:1.5}
+.note strong{color:var(--gray600)}
+#vbc{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+#vbs{flex:1;min-width:160px;font-family:'Segoe UI',system-ui;font-size:11.5px;border:1px solid var(--border);border-radius:6px;padding:6px 11px;outline:none;background:var(--gray50)}
+#vbs:focus{border-color:var(--teal)}
+.btn-dl{font-family:'Segoe UI',system-ui;font-size:11px;font-weight:600;background:var(--teal);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;transition:opacity .18s}
+.btn-dl:hover{opacity:.85}
+#vbcnt{font-size:10.5px;color:var(--gray400)}
+#vbtw{overflow-x:auto;max-height:480px;overflow-y:auto;border:1px solid var(--border);border-radius:8px}
+#vbt thead th{position:sticky;top:0;z-index:2}
+.cb{display:flex;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+.cb:last-child{border-bottom:none}
+.cb-n{font-size:11.5px;font-weight:500;color:var(--text);min-width:148px}
+.cb-n.dim{color:var(--gray400);font-style:italic}
+.cb-t{flex:1;margin:0 10px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.cb-f{height:100%;border-radius:3px}
+.cb-v{font-size:10.5px;font-weight:600;color:var(--gray600);font-family:monospace;min-width:32px;text-align:right}
+.cl-sec-hdr{font-size:9px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:1.4px;padding:9px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.wc{display:flex;flex-wrap:wrap;gap:5px;padding:2px 0}
+.wt{background:var(--gray50);border:1px solid var(--border);border-radius:5px;padding:3px 9px;font-size:var(--fs,12px);color:var(--text);font-weight:500;cursor:default;transition:all .15s}
+.wt:hover{background:rgba(0,164,153,.08);border-color:var(--teal);color:var(--teal)}
+.stars{color:#d97706}
+/* sentiment kpi colors for values */
+.kvred{color:#e53e3e !important}
+.kvgrn{color:#059669 !important}
+.kvamb{color:#d97706 !important}
+
+/* ── UNIFIED OVERRIDES ── */
+body{overflow:hidden}
+.main{overflow:hidden;height:100vh;display:flex;flex-direction:column}
+.content{flex:1;overflow-y:auto;padding:0}
+.page.active{display:flex;flex-direction:column;min-height:100%}
+#page-overview .content-inner,
+#page-features .content-inner,
+#page-signals .content-inner{padding:1.25rem 1.75rem 3rem}
+/* Sidebar group divider */
+.sb-divider{height:1px;background:rgba(255,255,255,.07);margin:.5rem 0}
+.sb-group-lbl{padding:.875rem 1.5rem .3rem;font-size:9px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.12em}
+/* Topbar badge for active module */
+.module-badge{font-size:10px;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.09);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.1)}
+.sent-wrapper-inner{flex:1;overflow-y:auto}
+#sent-wrapper{display:flex;flex-direction:column;height:100%}
+#sent-wrapper.active{display:flex}
+#fb{flex-shrink:0}
 </style>
 </head>
 <body>
 
+<!-- LOADING OVERLAY -->
+<div id="overlay" class="hidden">
+  <div class="ov-spinner"></div>
+  <div class="ov-txt">Cargando datos&hellip;</div>
+  <div class="ov-sub" id="ov-sub">Conectando&hellip;</div>
+</div>
+
 <aside class="sidebar">
   <div class="sb-brand">
-    <h2>Monitor de Inteligencia<br>Competitiva</h2>
+    <h2>Social Listening</h2>
     <p>Customer Intelligence &middot; Gerencia CX</p>
   </div>
-  <div class="sb-section">An&aacute;lisis</div>
-  <div class="sb-item active" id="nav-overview" onclick="showPage('overview')"><span class="ico">&#9670;</span>Resumen Ejecutivo</div>
-  <div class="sb-item" id="nav-features" onclick="showPage('features')"><span class="ico">&#9889;</span>Features &amp; Tendencias</div>
-  <div class="sb-section">Datos</div>
-  <div class="sb-item" id="nav-signals" onclick="showPage('signals')"><span class="ico">&#8801;</span>Detalle Se&ntilde;ales</div>
-  <div class="sb-footer" id="sb-footer">Customer Intelligence<br>Gerencia CX &middot; OCASA</div>
+
+  <div class="sb-group-lbl">An&aacute;lisis de Sentimiento</div>
+  <div class="sb-item" id="nav-ov" onclick="goSent('ov',this)">Vista General</div>
+  <div class="sb-item" id="nav-pd" onclick="goSent('pd',this)">Puntos de Dolor</div>
+  <div class="sb-item" id="nav-cl" onclick="goSent('cl',this)">Clientes</div>
+  <div class="sb-item" id="nav-rv" onclick="goSent('rv',this)">Detalle Reviews</div>
+
+  <div class="sb-group-lbl" style="margin-top:.25rem">Inteligencia Competitiva</div>
+  <div class="sb-item active" id="nav-overview" onclick="showPage('overview')">Resumen Ejecutivo</div>
+  <div class="sb-item" id="nav-features" onclick="showPage('features')">Features &amp; Tendencias</div>
+  <div class="sb-item" id="nav-signals" onclick="showPage('signals')">Detalle Se&ntilde;ales</div>
+
+  <div class="sb-footer" id="sb-footer">
+    Customer Intelligence<br>
+    Gerencia CX &middot; OCASA<br>
+    <span id="sftr-count">&ndash;</span><br>
+    <span id="sftr-updated">&ndash;</span>
+  </div>
 </aside>
 
 <div class="main">
   <div class="topbar">
     <div id="topbar-title" class="topbar-title">Resumen Ejecutivo</div>
     <div class="tb-right">
-      <span class="tb-chip" id="tb-chip">Cargando...</span>
+      <span class="tb-chip" id="tb-chip">Cargando&hellip;</span>
       <span class="tb-date" id="tb-date"></span>
+      <button class="btn-refresh" id="btn-refresh" onclick="loadSentData()">&#8635; Actualizar</button>
     </div>
   </div>
+
+  <!-- Error banner -->
+  <div id="errbanner">
+    &#9888; No se pudo cargar el Sheet.
+    <a onclick="loadSentData()">Reintentar</a>
+  </div>
+
   <div class="content">
 
+    <!-- ══ CI PAGES ══ -->
     <div class="page active" id="page-overview">
-      <div class="kpi-row" id="kpi-row"></div>
-      <div class="alert"><span style="font-size:15px;flex-shrink:0">&#9888;</span><div id="alert-text">Cargando...</div></div>
-      <div class="grid2">
-        <div class="card" style="margin-bottom:0">
-          <div class="card-head">
-            <span class="card-title">Distribuci&oacute;n de se&ntilde;ales &middot; LATAM</span>
-            <span style="font-size:10px;color:var(--gray400)">Hover para features por pa&iacute;s</span>
+      <div style="padding:1.25rem 1.75rem 3rem">
+        <div class="kpi-row" id="kpi-row"></div>
+        <div class="alert"><span style="font-size:15px;flex-shrink:0">&#9888;</span><div id="alert-text">Cargando&hellip;</div></div>
+        <div class="grid2">
+          <div class="card" style="margin-bottom:0">
+            <div class="card-head">
+              <span class="card-title">Distribuci&oacute;n de se&ntilde;ales &middot; LATAM</span>
+              <span style="font-size:10px;color:var(--gray400)">Hover para features</span>
+            </div>
+            <div id="latam-map-wrap">
+              <div class="map-tt" id="map-tt"></div>
+              <div class="map-zoom">
+                <button class="zoom-btn" id="zi">+</button>
+                <button class="zoom-btn" id="zo">&minus;</button>
+                <button class="zoom-btn" id="zr" style="font-size:11px">&#8857;</button>
+              </div>
+            </div>
+            <div class="map-legend" id="map-legend"></div>
           </div>
-          <div id="latam-map-wrap">
-            <div class="map-tt" id="map-tt"></div>
-            <div class="map-zoom">
-              <button class="zoom-btn" id="zi">+</button>
-              <button class="zoom-btn" id="zo">&minus;</button>
-              <button class="zoom-btn" id="zr" style="font-size:11px">&#8857;</button>
+          <div style="display:flex;flex-direction:column;gap:1.1rem">
+            <div class="card" style="margin-bottom:0">
+              <div class="card-head"><span class="card-title">Matriz impacto &times; urgencia</span></div>
+              <div class="card-body" id="matrix-body"></div>
+            </div>
+            <div class="card" style="margin-bottom:0;flex:1">
+              <div class="card-head"><span class="card-title">&Aacute;reas internas impactadas</span></div>
+              <div class="card-body" style="display:flex;gap:1rem;align-items:center">
+                <div style="position:relative;width:100px;height:100px;flex-shrink:0"><canvas id="areaChart"></canvas></div>
+                <div id="area-legend"></div>
+              </div>
+            </div>
+            <div class="card" style="margin-bottom:0">
+              <div class="card-head"><span class="card-title">Se&ntilde;ales por pa&iacute;s</span></div>
+              <div class="card-body" id="pais-bars"></div>
             </div>
           </div>
-          <div class="map-legend" id="map-legend"></div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:1.1rem">
-          <div class="card" style="margin-bottom:0">
-            <div class="card-head"><span class="card-title">Matriz impacto &times; urgencia</span></div>
-            <div class="card-body" id="matrix-body"></div>
-          </div>
-          <div class="card" style="margin-bottom:0;flex:1">
-            <div class="card-head"><span class="card-title">&Aacute;reas internas impactadas</span></div>
-            <div class="card-body" style="display:flex;gap:1rem;align-items:center">
-              <div style="position:relative;width:100px;height:100px;flex-shrink:0"><canvas id="areaChart"></canvas></div>
-              <div id="area-legend"></div>
-            </div>
-          </div>
-          <div class="card" style="margin-bottom:0">
-            <div class="card-head"><span class="card-title">Se&ntilde;ales por pa&iacute;s</span></div>
-            <div class="card-body" id="pais-bars"></div>
-          </div>
-        </div>
+        <div class="sec-lbl">Top 10 features accionables</div>
+        <div class="card"><div style="overflow-x:auto">
+          <table class="ft">
+            <thead><tr>
+              <th style="width:24px;text-align:center">#</th>
+              <th>Feature / T&oacute;pico</th>
+              <th style="text-align:center">Se&ntilde;ales</th>
+              <th style="text-align:center">Urgencia</th>
+              <th style="text-align:center">Impacto</th>
+              <th>Segmento</th>
+              <th>Resumen se&ntilde;ales</th>
+            </tr></thead>
+            <tbody id="top10-tbody"></tbody>
+          </table>
+        </div></div>
+        <div class="sec-lbl">Competidores directos &middot; se&ntilde;ales Argentina</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem" id="comp-grid"></div>
+        <div class="sec-lbl">Features nuevas detectadas</div>
+        <div class="new-grid" id="new-grid"></div>
       </div>
-      <div class="sec-lbl">Top 10 features accionables</div>
-      <div class="card"><div style="overflow-x:auto">
-        <table class="ft">
-          <thead><tr>
-            <th style="width:24px;text-align:center">#</th>
-            <th>Feature / T&oacute;pico</th>
-            <th style="text-align:center">Se&ntilde;ales</th>
-            <th style="text-align:center">Urgencia</th>
-            <th style="text-align:center">Impacto</th>
-            <th>Segmento</th>
-            <th>Resumen se&ntilde;ales</th>
-          </tr></thead>
-          <tbody id="top10-tbody"></tbody>
-        </table>
-      </div></div>
-      <div class="sec-lbl">Competidores directos &middot; se&ntilde;ales Argentina</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem" id="comp-grid"></div>
-      <div class="sec-lbl">Features nuevas detectadas</div>
-      <div class="new-grid" id="new-grid"></div>
     </div>
 
     <div class="page" id="page-features">
-      <div class="grid2">
+      <div style="padding:1.25rem 1.75rem 3rem">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-head"><span class="card-title">Se&ntilde;ales por feature &middot; top 10</span></div>
+            <div class="card-body"><div style="position:relative;height:260px"><canvas id="featBar"></canvas></div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:1.1rem">
+            <div class="card" style="margin-bottom:0">
+              <div class="card-head"><span class="card-title">Distribuci&oacute;n vertical</span></div>
+              <div class="card-body"><div class="chart-wrap"><canvas id="vertChart"></canvas></div></div>
+            </div>
+            <div class="card" style="margin-bottom:0">
+              <div class="card-head"><span class="card-title">Presencia geogr&aacute;fica &middot; muy alto impacto</span></div>
+              <div class="card-body" id="geo-pres"></div>
+            </div>
+          </div>
+        </div>
         <div class="card">
-          <div class="card-head"><span class="card-title">Se&ntilde;ales por feature &middot; top 10</span></div>
-          <div class="card-body"><div style="position:relative;height:260px"><canvas id="featBar"></canvas></div></div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:1.1rem">
-          <div class="card" style="margin-bottom:0">
-            <div class="card-head"><span class="card-title">Distribuci&oacute;n vertical</span></div>
-            <div class="card-body"><div class="chart-wrap"><canvas id="vertChart"></canvas></div></div>
+          <div class="card-head">
+            <span class="card-title">Todas las features detectadas</span>
+            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+              <span class="fl">Impacto:</span>
+              <button class="fb active" onclick="fImp('all',this)">Todos</button>
+              <button class="fb" onclick="fImp('muy_alto',this)">Muy alto</button>
+              <button class="fb" onclick="fImp('alto',this)">Alto</button>
+              <span class="fl" style="margin-left:6px">Tendencia:</span>
+              <button class="fb active" id="f-tall" onclick="fTend('all',this)">Todas</button>
+              <button class="fb" id="f-tnew" onclick="fTend('nueva',this)">Nuevas</button>
+              <button class="fb" id="f-tdwn" onclick="fTend('bajando',this)">Bajando</button>
+            </div>
           </div>
-          <div class="card" style="margin-bottom:0">
-            <div class="card-head"><span class="card-title">Presencia geogr&aacute;fica &middot; muy alto impacto</span></div>
-            <div class="card-body" id="geo-pres"></div>
+          <div style="overflow-x:auto">
+            <table class="ft">
+              <thead><tr>
+                <th>Feature</th><th style="text-align:center">Se&ntilde;ales</th>
+                <th style="text-align:center">Impacto</th><th style="text-align:center">Urgencia</th>
+                <th>Tendencia</th><th>Pa&iacute;ses</th><th>Fuentes</th>
+              </tr></thead>
+              <tbody id="feat-tbody"></tbody>
+            </table>
           </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-head">
-          <span class="card-title">Todas las features detectadas</span>
-          <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
-            <span class="fl">Impacto:</span>
-            <button class="fb active" onclick="fImp('all',this)">Todos</button>
-            <button class="fb" onclick="fImp('muy_alto',this)">Muy alto</button>
-            <button class="fb" onclick="fImp('alto',this)">Alto</button>
-            <span class="fl" style="margin-left:6px">Tendencia:</span>
-            <button class="fb active" id="f-tall" onclick="fTend('all',this)">Todas</button>
-            <button class="fb" id="f-tnew" onclick="fTend('nueva',this)">Nuevas</button>
-            <button class="fb" id="f-tdwn" onclick="fTend('bajando',this)">Bajando</button>
-          </div>
-        </div>
-        <div style="overflow-x:auto">
-          <table class="ft">
-            <thead><tr>
-              <th>Feature</th>
-              <th style="text-align:center">Se&ntilde;ales</th>
-              <th style="text-align:center">Impacto</th>
-              <th style="text-align:center">Urgencia</th>
-              <th>Tendencia</th>
-              <th>Pa&iacute;ses</th>
-              <th>Fuentes</th>
-            </tr></thead>
-            <tbody id="feat-tbody"></tbody>
-          </table>
         </div>
       </div>
     </div>
 
     <div class="page" id="page-signals">
-      <div id="sig-filters" style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:.875rem 1.1rem;margin-bottom:1.25rem;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <span style="font-size:10px;font-weight:700;color:var(--gray500);text-transform:uppercase;letter-spacing:.06em">Filtros</span>
-        <select id="f-pais" class="sel" onchange="applySignalFilters()"><option value="">Todos los países</option><option value="Argentina">Argentina</option><option value="Brasil">Brasil</option><option value="Chile">Chile</option><option value="Colombia">Colombia</option><option value="México">México</option><option value="Perú">Perú</option><option value="Regional">Regional</option></select>
-        <select id="f-impact" class="sel" onchange="applySignalFilters()">
-          <option value="">Todo impacto</option>
-          <option value="muy_alto">Muy alto</option>
-          <option value="alto">Alto</option>
-        </select>
-        <select id="f-urgencia" class="sel" onchange="applySignalFilters()">
-          <option value="">Toda urgencia</option>
-          <option value="alta">Alta</option>
-          <option value="media">Media</option>
-        </select>
-        <select id="f-vertical" class="sel" onchange="applySignalFilters()"><option value="">Todos los segmentos</option><option value="Agroindustria">Agroindustria</option><option value="Bancos / Postal">Bancos / Postal</option><option value="Ecommerce grande">Ecommerce grande</option><option value="Ecommerce pequeño">Ecommerce pequeño</option><option value="Import / Export">Import / Export</option><option value="Logística general">Logística general</option><option value="Manufactura">Manufactura</option><option value="Minería">Minería</option><option value="Retail">Retail</option><option value="Tecnología logística">Tecnología logística</option></select>
-        <select id="f-feature" class="sel" onchange="applySignalFilters()"><option value="">Todos los features</option><option value="API de integración para ecommerce">API de integración para ecommerce</option><option value="Automatización de picking / sorting">Automatización de picking / sorting</option><option value="Automatización de picking/sorting">Automatización de picking/sorting</option><option value="Automatización y trazabilidad avanzada">Automatización y trazabilidad avanzada</option><option value="Cadena de frío monitorizada">Cadena de frío monitorizada</option><option value="Carbon footprint tracking">Carbon footprint tracking</option><option value="Ciberseguridad y capacitación">Ciberseguridad y capacitación</option><option value="Cross-border acelerado">Cross-border acelerado</option><option value="Dashboard de visibilidad para clientes">Dashboard de visibilidad para clientes</option><option value="Digitalización logística">Digitalización logística</option><option value="Expansión regional LATAM">Expansión regional LATAM</option><option value="Flota liviana sostenible">Flota liviana sostenible</option><option value="Fulfillment omnicanal integrado">Fulfillment omnicanal integrado</option><option value="Fulfillment tercerizado">Fulfillment tercerizado</option><option value="Fulfillment urbano última milla">Fulfillment urbano última milla</option><option value="Fulfillment y última milla integrada">Fulfillment y última milla integrada</option><option value="Gestión de excepciones proactiva">Gestión de excepciones proactiva</option><option value="IA para optimización de rutas">IA para optimización de rutas</option><option value="Integración con marketplaces LATAM">Integración con marketplaces LATAM</option><option value="Logística inversa automatizada">Logística inversa automatizada</option><option value="Logística para agroindustria">Logística para agroindustria</option><option value="Logística para minería">Logística para minería</option><option value="Logística para minería / agroindustria">Logística para minería / agroindustria</option><option value="Nearshoring logístico">Nearshoring logístico</option><option value="Puntos de conveniencia / PUDO">Puntos de conveniencia / PUDO</option><option value="Quick commerce / dark stores">Quick commerce / dark stores</option><option value="Same day / Next day delivery">Same day / Next day delivery</option><option value="Seguro de envío integrado">Seguro de envío integrado</option><option value="Solución para pymes / long tail">Solución para pymes / long tail</option><option value="Tracking en tiempo real">Tracking en tiempo real</option><option value="Última milla omnicanal">Última milla omnicanal</option></select>
-        <button class="fb" onclick="clearSignalFilters()" style="margin-left:4px">&#10005; Limpiar</button>
-        <span id="sig-count" style="margin-left:auto;font-size:11px;color:var(--gray400)"></span>
-      </div>
-
-      <div class="card" style="margin-bottom:0">
-        <div style="overflow-x:auto">
-          <table class="ft" id="signals-table">
-            <thead>
-              <tr>
-                <th style="min-width:80px">Fuente</th>
-                <th style="min-width:80px">País</th>
-                <th style="min-width:160px">Feature</th>
-                <th style="text-align:center;min-width:70px">Impacto</th>
-                <th style="text-align:center;min-width:70px">Urgencia</th>
-                <th style="min-width:120px">Segmento</th>
-                <th style="min-width:200px">Tópico</th>
-                <th style="min-width:320px">Resumen de señal</th>
-              </tr>
-            </thead>
-            <tbody id="signals-tbody"></tbody>
-          </table>
+      <div style="padding:1.25rem 1.75rem 3rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:1rem;flex-wrap:wrap">
+          <div style="font-size:10px;font-weight:700;color:var(--gray500);text-transform:uppercase;letter-spacing:.06em">Detalle Se&ntilde;ales LATAM</div>
+          <button onclick="dlSignalsXL()" style="font-family:'Segoe UI',system-ui;font-size:11px;font-weight:600;background:var(--teal);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;transition:opacity .18s;display:flex;align-items:center;gap:6px" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">&darr; Exportar Excel</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem">
+          <div style="font-size:13px;font-weight:600;color:var(--navy)">Detalle Se&ntilde;ales &middot; LATAM</div>
+          <button class="btn-dl" onclick="dlSignalsXL()" style="font-family:'Segoe UI',system-ui;font-size:11px;font-weight:600;background:var(--teal);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer">&darr; Exportar Excel</button>
+        </div>
+        <div id="sig-filters" style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:.875rem 1.1rem;margin-bottom:1.25rem;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:10px;font-weight:700;color:var(--gray500);text-transform:uppercase;letter-spacing:.06em">Filtros</span>
+          <select id="f-pais" class="sel" onchange="applySignalFilters()"><option value="">Todos los pa&iacute;ses</option><option value="Argentina">Argentina</option><option value="Brasil">Brasil</option><option value="Chile">Chile</option><option value="Colombia">Colombia</option><option value="M&eacute;xico">M&eacute;xico</option><option value="Per&uacute;">Per&uacute;</option><option value="Regional">Regional</option></select>
+          <select id="f-impact" class="sel" onchange="applySignalFilters()"><option value="">Todo impacto</option><option value="muy_alto">Muy alto</option><option value="alto">Alto</option></select>
+          <select id="f-urgencia" class="sel" onchange="applySignalFilters()"><option value="">Toda urgencia</option><option value="alta">Alta</option><option value="media">Media</option></select>
+          <select id="f-vertical" class="sel" onchange="applySignalFilters()"><option value="">Todos los segmentos</option><option value="Agroindustria">Agroindustria</option><option value="Ecommerce grande">Ecommerce grande</option><option value="Import / Export">Import / Export</option><option value="Log&iacute;stica general">Log&iacute;stica general</option><option value="Manufactura">Manufactura</option><option value="Miner&iacute;a">Miner&iacute;a</option><option value="Tecnolog&iacute;a log&iacute;stica">Tecnolog&iacute;a log&iacute;stica</option></select>
+          <select id="f-feature" class="sel" onchange="applySignalFilters()"><option value="">Todos los features</option><option value="API de integraci&oacute;n para ecommerce">API integraci&oacute;n ecommerce</option><option value="Automatizaci&oacute;n de picking/sorting">Automatizaci&oacute;n picking/sorting</option><option value="Dashboard de visibilidad para clientes">Dashboard visibilidad</option><option value="Expansi&oacute;n regional LATAM">Expansi&oacute;n LATAM</option><option value="Fulfillment tercerizado">Fulfillment tercerizado</option><option value="IA para optimizaci&oacute;n de rutas">IA optimizaci&oacute;n rutas</option><option value="Integraci&oacute;n con marketplaces LATAM">Integraci&oacute;n marketplaces</option><option value="Log&iacute;stica para miner&iacute;a">Log&iacute;stica miner&iacute;a</option><option value="Nearshoring log&iacute;stico">Nearshoring</option><option value="Same day / Next day delivery">Same day delivery</option><option value="Tracking en tiempo real">Tracking tiempo real</option></select>
+          <button class="fb" onclick="clearSignalFilters()" style="margin-left:4px">&#10005; Limpiar</button>
+          <span id="sig-count" style="margin-left:auto;font-size:11px;color:var(--gray400)"></span>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div style="overflow-x:auto">
+            <table class="ft" id="signals-table">
+              <thead><tr>
+                <th style="min-width:80px">Fuente</th><th style="min-width:70px">Pa&iacute;s</th>
+                <th style="min-width:150px">Feature</th>
+                <th style="text-align:center;min-width:65px">Impacto</th>
+                <th style="text-align:center;min-width:65px">Urgencia</th>
+                <th style="min-width:110px">Segmento</th>
+                <th style="min-width:180px">T&oacute;pico</th>
+                <th style="min-width:300px">Resumen de se&ntilde;al</th>
+              </tr></thead>
+              <tbody id="signals-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
 
+    <!-- ══ SENTIMENT WRAPPER ══ -->
+
+<!-- ════════════════════ SENTIMENT WRAPPER ════════════════════ -->
+<div class="page" id="sent-wrapper" style="padding:0;background:transparent">
+
+  <!-- FILTER BAR (outside sections, inside wrapper) -->
+  <div id="fb" class="hidden">
+    <span class="fbl">Filtros</span>
+    <select class="fs" id="f-fu" onchange="apf()">
+      <option value="">Todas las fuentes</option>
+      <option value="google_maps">Google Maps</option>
+      <option value="tuquejasuma">TuQuejaSuma</option>
+    </select>
+    <select class="fs" id="f-sc" onchange="apf()"><option value="">Todas las sucursales</option></select>
+    <select class="fs" id="f-cl" onchange="apf()">
+      <option value="">Todos los clientes</option>
+      <optgroup label="eCommerce / Marketplaces"><option value="ML">MercadoLibre</option><option value="Temu">Temu</option><option value="Shein">Shein</option></optgroup>
+      <optgroup label="Gobierno / Documentos"><option value="Renaper/DNI">Renaper / DNI</option><option value="GCBA">GCBA</option></optgroup>
+      <optgroup label="Bancos / Finanzas"><option value="Banco Ciudad">Banco Ciudad</option><option value="Banco Macro">Banco Macro</option><option value="Bancos s/e">Bancos (s/e)</option><option value="Mastercard/Visa">Mastercard / Visa</option></optgroup>
+      <optgroup label="Indumentaria / Deporte"><option value="Nike">Nike</option><option value="Adidas">Adidas</option><option value="Topper">Topper</option><option value="Puma">Puma</option><option value="Decathlon">Decathlon</option><option value="La Martina">La Martina</option></optgroup>
+      <optgroup label="Log&iacute;stica / Correos"><option value="Correo Arg. / Competidores">Correo Arg. / Andreani / OCA</option><option value="MailAmericas">MailAmericas</option><option value="OCASA (interno)">OCASA (interno)</option></optgroup>
+      <optgroup label="Otros"><option value="Newsan">Newsan</option><option value="Otros (menor volumen)">Otros</option><option value="Sin identificar">Sin identificar</option></optgroup>
+    </select>
+    <select class="fs" id="f-se" onchange="apf()"><option value="">Todo sentimiento</option><option value="Negativo">Negativo</option><option value="Positivo">Positivo</option><option value="Neutro">Neutro</option></select>
+    <select class="fs" id="f-yr" onchange="apf()"><option value="">Todos los a&ntilde;os</option></select>
+    <select class="fs" id="f-mo" onchange="apf()">
+      <option value="">Todos los meses</option>
+      <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+      <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+    </select>
+    <div class="fsep"></div>
+    <button id="freset" onclick="rst()">&times; Limpiar</button>
+  </div>
+
+  <!-- VISTA GENERAL -->
+  <div id="sec-ov" class="sec" style="padding:1.25rem 1.75rem">
+    <div class="sh"><h2>Vista General</h2><p>An&aacute;lisis consolidado &middot; Google Maps + TuQuejaSuma</p></div>
+    <div class="kg k5">
+      <div class="kc"><div class="kl">Total Reviews</div><div class="kv" id="k-tot">&ndash;</div><div class="ks">per&iacute;odo seleccionado</div></div>
+      <div class="kc"><div class="kl">NPS Proxy</div><div class="kv kvred" id="k-nps">&ndash;</div><div class="ks" id="k-nps2">&ndash;</div></div>
+      <div class="kc"><div class="kl">Negativo</div><div class="kv kvred" id="k-neg">&ndash;</div><div class="ks" id="k-neg2">&ndash;</div></div>
+      <div class="kc"><div class="kl">Positivo</div><div class="kv kvgrn" id="k-pos">&ndash;</div><div class="ks" id="k-pos2">&ndash;</div></div>
+      <div class="kc"><div class="kl">Rating Prom.</div><div class="kv kvamb" id="k-st">&ndash;</div><div class="ks">&star; sobre 5.0</div></div>
+    </div>
+    <div class="alr"><strong>&#9888; Se&ntilde;al cr&iacute;tica:</strong> El mayor volumen de reviews reportan <em>Entrega no realizada / visita falsa</em>. Us&aacute; el filtro de fuente para comparar Google Maps vs TuQuejaSuma.</div>
+    <div class="g2s">
+      <div class="cd"><div class="ct2">Distribuci&oacute;n de sentimiento</div><div class="cw"><canvas id="cSent"></canvas></div></div>
+      <div class="cd"><div class="ct2">Reviews por fuente</div><div class="cw"><canvas id="cFuente"></canvas></div></div>
+    </div>
+    <div class="cd"><div class="ct2">Evoluci&oacute;n mensual de reviews negativas <span>&middot; &uacute;ltimos 13 meses</span></div><div class="cw tl"><canvas id="cTrend"></canvas></div></div>
+    <div class="cd"><div class="ct2">Palabras clave m&aacute;s frecuentes</div><div class="wc" id="wc"></div></div>
+  </div>
+
+  <!-- PUNTOS DE DOLOR -->
+  <div id="sec-pd" class="sec" style="padding:1.25rem 1.75rem">
+    <div class="sh"><h2>Puntos de Dolor</h2><p>Clasificaci&oacute;n por categor&iacute;a &middot; click en barra para ver reviews</p></div>
+    <div class="g60s">
+      <div class="cd">
+        <div class="ct2">Ranking de problemas <span id="pd-tot"></span></div>
+        <div id="pdb"></div>
+      </div>
+      <div class="cd">
+        <div class="ct2">Reviews &mdash; <span id="pd-sel-lbl">seleccion&aacute; una barra</span></div>
+        <select class="fs" id="f-pdv" style="width:100%;margin-bottom:10px" onchange="rnRVL()"><option value="">&mdash; Punto de dolor &mdash;</option></select>
+        <div id="rvl"><div class="rv-empty">Seleccion&aacute; un punto de dolor.</div></div>
+      </div>
+    </div>
+    <div class="cd"><div class="ct2">Evoluci&oacute;n anual &mdash; Top 5 puntos de dolor</div><div class="cw xl"><canvas id="cPainEvo"></canvas></div></div>
+    <div class="g2s">
+      <div class="cd"><div class="ct2">Matriz: Cliente &times; Punto de Dolor</div><div class="mxw" id="mx-cp"></div></div>
+      <div class="cd"><div class="ct2">Matriz: Servicio &times; Punto de Dolor</div><div class="mxw" id="mx-sp"></div></div>
+    </div>
+  </div>
+
+  <!-- CLIENTES -->
+  <div id="sec-cl" class="sec" style="padding:1.25rem 1.75rem">
+    <div class="sh"><h2>Clientes</h2><p>Distribuci&oacute;n de reviews por cliente</p></div>
+    <div class="kg k4" id="kpi-cl"></div>
+    <div class="note"><strong>Nota:</strong> Las reviews sin cliente registrado se clasifican como <em>Sin identificar</em>.</div>
+    <div class="g60s">
+      <div class="cd"><div class="ct2">Volumen por cliente <span>&middot; % neg</span></div><div id="cbl"></div></div>
+      <div class="cd">
+        <div class="ct2">Reviews &mdash; <span id="cl-sel-lbl">seleccion&aacute; un cliente</span></div>
+        <select class="fs" id="f-clv" style="width:100%;margin-bottom:10px" onchange="rnRVCL()"><option value="">&mdash; Cliente &mdash;</option></select>
+        <div id="rvcl"><div class="rv-empty">Seleccion&aacute; un cliente para ver reviews.</div></div>
+      </div>
+    </div>
+    <div class="ins"><strong>Riesgo marketplaces:</strong> MercadoLibre y Temu concentran el mayor volumen de quejas identificadas.</div>
+  </div>
+
+  <!-- DETALLE REVIEWS -->
+  <div id="sec-rv" class="sec" style="padding:1.25rem 1.75rem">
+    <div class="sh"><h2>Detalle de Reviews</h2><p>Texto original &middot; exportable en Excel</p></div>
+    <div id="vbc">
+      <input type="text" id="vbs" placeholder="Buscar en review o autor..." oninput="rnVB()">
+      <span id="vbcnt"></span>
+      <button class="btn-dl" onclick="dlXL()">&darr; Excel</button>
+    </div>
+    <div id="vbtw">
+      <table id="vbt">
+        <thead><tr><th>Fecha</th><th>Autor</th><th>Fuente</th><th>Sucursal</th><th>Cliente</th><th>Servicio</th><th>Punto de Dolor</th><th>Sentim.</th><th>&#9733;</th><th>Review original</th></tr></thead>
+        <tbody id="vbb"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+<!-- /sent-wrapper -->
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
 <script>
+
+// ── SENTIMENT NAV ────────────────────────────────────────────────
+var SENT_TITLES = {ov:'Vista General', pd:'Puntos de Dolor', cl:'Clientes', rv:'Detalle Reviews'};
+function goSent(id, el) {
+  // Deactivate all pages
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('on'); });
+  document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('on'); });
+  document.querySelectorAll('.sb-item').forEach(function(i){ i.classList.remove('active'); });
+  // Hide CI pages, show sentiment section wrapper
+  var wrapper = document.getElementById('sent-wrapper');
+  if (wrapper) wrapper.classList.add('active');
+  // Activate sentiment section
+  var sec = document.getElementById('sec-' + id);
+  if (sec) sec.classList.add('on');
+  if (el) el.classList.add('active');
+  document.getElementById('topbar-title').textContent = SENT_TITLES[id] || id;
+  // Show filter bar
+  var fb = document.getElementById('fb');
+  if (fb) fb.classList.remove('hidden');
+  ra();
+}
+
 // ── CONFIG: reemplazar con URLs CSV del Sheet para modo dinámico ──
 const SHEET_SENALES_CSV    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR1W7ONeWoK4BHK1mEC_sJXq5NInJrrfMqnm0mTG6i3stYvRHGGmRECKggXyimLqpiPjCmkzhJbYlHT/pub?gid=2084779388&single=true&output=csv";
 const SHEET_TENDENCIAS_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR1W7ONeWoK4BHK1mEC_sJXq5NInJrrfMqnm0mTG6i3stYvRHGGmRECKggXyimLqpiPjCmkzhJbYlHT/pub?gid=1325496971&single=true&output=csv";
@@ -345,12 +642,16 @@ function pc(pais) {
 }
 
 // ── NAV ──────────────────────────────────────────────────────────
-var TITLES = {overview:'Resumen Ejecutivo', features:'Features & Tendencias', signals:'Detalle Señales'};
+var TITLES = {overview:'Resumen Ejecutivo', features:'Features & Tendencias', signals:'Detalle Señales', ov:'Vista General', pd:'Puntos de Dolor', cl:'Clientes', rv:'Detalle Reviews'};
 var _D = null, _featsOk = false, _sigsOk = false;
 var _fi = 'all', _ft = 'all';
 
 function showPage(id) {
+  // Show/hide sentiment filter bar
+  var fb = document.getElementById('fb');
+  if (fb) fb.classList.toggle('hidden', !['ov','pd','cl','rv'].includes(id));
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('on'); });
   ['overview','features','signals'].forEach(function(k){
     var el = document.getElementById('nav-' + k);
     if (el) el.classList.remove('active');
@@ -803,6 +1104,348 @@ loadData().then(function(D) {
   renderOverview(D);
   drawMap(D.country_data);
 });
+
+
+// ════════════════════════════════════════════════
+// SENTIMENT ENGINE
+// ════════════════════════════════════════════════
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQa8lb9LyoLQbEdYhVttK13B69xWP_5bSZeNnTlpvyv4PBDwNW3mGmQ9NmxvFCH8SdTJY49dwp_tomY/pub?gid=1325309383&single=true&output=csv";
+
+const CL_GROUPS=[
+  {label:'eCommerce / Marketplaces',keys:['ML','Temu','Shein'],color:'#1B4F8A'},
+  {label:'Gobierno / Documentos',keys:['Renaper/DNI','GCBA'],color:'#3A6FA8'},
+  {label:'Bancos / Finanzas',keys:['Banco Ciudad','Banco Macro','Bancos s/e','Mastercard/Visa'],color:'#5B8FBF'},
+  {label:'Indumentaria / Deporte',keys:['Nike','Adidas','Topper','Puma','Decathlon','La Martina'],color:'#00A499'},
+  {label:'Logística / Correos',keys:['Correo Arg. / Competidores','MailAmericas','OCASA (interno)'],color:'#7EA8C4'},
+  {label:'Otros identificados',keys:['Newsan','Otros (menor volumen)'],color:'#B8CDD9'},
+];
+const CL_ALL_KEYS=CL_GROUPS.flatMap(g=>g.keys).concat(['Sin identificar']);
+const CL_LABEL={ML:'MercadoLibre'};
+CL_ALL_KEYS.forEach(k=>{if(!CL_LABEL[k])CL_LABEL[k]=k;});
+const PC={'Entrega no realizada / visita falsa':'red','Demoras y retrasos':'red','Pérdida o robo de paquete':'red','Atención al cliente deficiente':'a','Error en dirección de entrega':'a','Falta de comunicación y notificaciones':'a','Dificultad para retirar en sucursal':'a'};
+
+let D=[], F=[], scharts={};
+
+function normCliente(c){
+  if(!c||c==='nan'||c==='') return 'Sin identificar';
+  const cl=c.toLowerCase();
+  if(cl.includes('mercadolibre')) return 'ML';
+  if(cl.includes('temu')) return 'Temu';
+  if(cl.includes('renaper')||(cl.includes('dni')&&!cl.includes('banco'))) return 'Renaper/DNI';
+  if(cl.includes('shein')) return 'Shein';
+  if(cl.includes('nike')) return 'Nike';
+  if(cl.includes('adidas')) return 'Adidas';
+  if(cl.includes('topper')) return 'Topper';
+  if(cl.includes('decathlon')) return 'Decathlon';
+  if(cl.includes('newsan')) return 'Newsan';
+  if(cl.includes('la martina')||cl.includes('martina')) return 'La Martina';
+  if(cl.includes('mail america')||cl.includes('mailamerica')) return 'MailAmericas';
+  if(cl.includes('mastercard')||cl.includes('visa')) return 'Mastercard/Visa';
+  if(cl.includes('ciudad')&&cl.includes('banco')) return 'Banco Ciudad';
+  if((cl.includes('gobierno')||cl.includes('gcba')||cl.includes('municipalidad'))&&!cl.includes('banco')) return 'GCBA';
+  if(cl.includes('macro')) return 'Banco Macro';
+  if(cl.includes('banco')) return 'Bancos s/e';
+  if(cl.includes('correo argentino')||cl.includes('andreani')||cl==='oca') return 'Correo Arg. / Competidores';
+  if(cl.includes('ocasa')) return 'OCASA (interno)';
+  if(cl.includes('puma')) return 'Puma';
+  return 'Otros (menor volumen)';
+}
+
+function processRows(rows){
+  return rows.map(r=>{
+    const fecha=r['fecha_estimada']||'';
+    const ym=fecha.length>=7?fecha.substr(0,7):'';
+    const yr=ym?parseInt(ym.substr(0,4)):0;
+    const mo=ym?parseInt(ym.substr(5,2)):0;
+    const stMatch=(r['estrellas']||'').match(/(\d+)/);
+    const st=stMatch?parseInt(stMatch[1]):0;
+    return {f:fecha,ym,yr,mo,au:(r['autor']||'Anónimo').substr(0,30),rv:(r['review']||'').substr(0,300),rs:(r['resumen_review']||'').substr(0,150),st,se:r['sentimiento']||'',pd:r['punto_de_dolor']||'Sin clasificar',sv:r['servicio']||'Sin clasificar',sc:r['sucursal']||'–',fu:r['fuente']||'',cn:normCliente(r['cliente'])};
+  }).filter(r=>r.f);
+}
+
+async function loadSentData(){
+  showOverlay('Conectando datos de sentimiento…');
+  try{
+    const url=SHEET_CSV_URL+(SHEET_CSV_URL.includes('?')?'&':'?')+'_t='+Date.now();
+    const rows=await new Promise((resolve,reject)=>{
+      Papa.parse(url,{download:true,header:true,skipEmptyLines:true,complete:r=>resolve(r.data),error:e=>reject(e)});
+    });
+    D=processRows(rows);
+    if(!D.length)throw new Error('Sin datos');
+    const yrs=[...new Set(D.map(r=>r.yr))].filter(Boolean).sort();
+    const fy=document.getElementById('f-yr');
+    fy.innerHTML='<option value="">Todos los años</option>';
+    yrs.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;fy.appendChild(o);});
+    const sucs=[...new Set(D.map(r=>r.sc).filter(s=>s&&s!=='–'))].sort();
+    const fsc=document.getElementById('f-sc');
+    fsc.innerHTML='<option value="">Todas las sucursales</option>';
+    sucs.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;fsc.appendChild(o);});
+    const now=new Date();
+    const ts=now.toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    document.getElementById('sftr-count').textContent=D.length.toLocaleString('es')+' reviews';
+    document.getElementById('sftr-updated').textContent='Act. '+ts;
+    F=[...D]; apf();
+    hideOverlay();
+  }catch(e){hideOverlay();console.error('Sentiment load error:',e);}
+}
+
+function showOverlay(msg){document.getElementById('overlay').classList.remove('hidden');var s=document.getElementById('ov-sub');if(s)s.textContent=msg||'';}
+function hideOverlay(){document.getElementById('overlay').classList.add('hidden');}
+function gf(){return{fu:document.getElementById('f-fu').value,sc:document.getElementById('f-sc').value,cl:document.getElementById('f-cl').value,se:document.getElementById('f-se').value,yr:document.getElementById('f-yr').value,mo:document.getElementById('f-mo').value};}
+function apf(){
+  const f=gf();
+  F=D.filter(r=>{
+    if(f.fu&&r.fu!==f.fu)return false;
+    if(f.sc&&r.sc!==f.sc)return false;
+    if(f.cl&&r.cn!==f.cl)return false;
+    if(f.se&&r.se!==f.se)return false;
+    if(f.yr&&String(r.yr)!==f.yr)return false;
+    if(f.mo&&String(r.mo)!==f.mo)return false;
+    return true;
+  });
+  ra();
+}
+function rst(){['f-fu','f-sc','f-cl','f-se','f-yr','f-mo'].forEach(id=>document.getElementById(id).value='');apf();}
+
+function smkC(id,cfg){if(scharts[id]){scharts[id].destroy();delete scharts[id];}const el=document.getElementById(id);if(!el)return;scharts[id]=new Chart(el,cfg);}
+function sng(){return{grid:{color:'rgba(228,233,240,.55)'},ticks:{color:'#9aa0a6'}};}
+
+function ra(){
+  const activeSec=document.querySelector('.sec.on');
+  if(!activeSec)return;
+  const id=activeSec.id.replace('sec-','');
+  if(id==='ov')rnOV();
+  else if(id==='pd')rnPD();
+  else if(id==='cl')rnCL();
+  else if(id==='rv')rnVB();
+}
+
+function rnOV(){
+  const d=F,n=d.length;
+  if(!n){['k-tot','k-nps','k-neg','k-pos','k-st'].forEach(i=>{var el=document.getElementById(i);if(el)el.textContent='0';});return;}
+  const neg=d.filter(r=>r.se==='Negativo').length;
+  const pos=d.filter(r=>r.se==='Positivo').length;
+  const neu=d.filter(r=>r.se==='Neutro').length;
+  const rated=d.filter(r=>r.st>0);
+  const det=d.filter(r=>r.st>0&&r.st<=2).length;
+  const pro=d.filter(r=>r.st>=4).length;
+  const nps=((pro-det)/n*100).toFixed(1);
+  const avg=rated.length?(rated.reduce((a,r)=>a+r.st,0)/rated.length).toFixed(2):'–';
+  var el;
+  el=document.getElementById('k-tot');if(el)el.textContent=n.toLocaleString('es');
+  el=document.getElementById('k-nps');if(el)el.textContent=(nps>0?'+':'')+nps;
+  el=document.getElementById('k-nps2');if(el)el.textContent='Det. '+(det/n*100).toFixed(1)+'% · Pro. '+(pro/n*100).toFixed(1)+'%';
+  el=document.getElementById('k-neg');if(el)el.textContent=(neg/n*100).toFixed(1)+'%';
+  el=document.getElementById('k-neg2');if(el)el.textContent=neg.toLocaleString('es')+' reviews';
+  el=document.getElementById('k-pos');if(el)el.textContent=(pos/n*100).toFixed(1)+'%';
+  el=document.getElementById('k-pos2');if(el)el.textContent=pos.toLocaleString('es')+' reviews';
+  el=document.getElementById('k-st');if(el)el.textContent=avg;
+  smkC('cSent',{type:'doughnut',data:{labels:['Negativo','Positivo','Neutro'],datasets:[{data:[neg,pos,neu],backgroundColor:['#E53E3E','#059669','#D97706'],borderWidth:0,hoverOffset:4}]},options:{cutout:'65%',plugins:{legend:{position:'right'},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw.toLocaleString('es')} (${(c.raw/n*100).toFixed(1)}%)`}}}}});
+  const gm=d.filter(r=>r.fu==='google_maps').length,tqs=d.filter(r=>r.fu==='tuquejasuma').length;
+  smkC('cFuente',{type:'doughnut',data:{labels:['Google Maps','TuQuejaSuma'],datasets:[{data:[gm,tqs],backgroundColor:['#1B4F8A','#5B8FBF'],borderWidth:0,hoverOffset:4}]},options:{cutout:'65%',plugins:{legend:{position:'right'},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw.toLocaleString('es')} (${n?(c.raw/n*100).toFixed(1):0}%)`}}}}});
+  const allYMs=[...new Set(d.map(r=>r.ym).filter(Boolean))].sort();
+  const last13=allYMs.slice(-13);
+  const mm={};last13.forEach(m=>mm[m]=0);
+  d.filter(r=>r.se==='Negativo'&&last13.includes(r.ym)).forEach(r=>{mm[r.ym]++;});
+  const tLabels=last13.map(m=>{const[y,mo]=m.split('-');const mn=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];return mn[parseInt(mo)-1]+' '+y.slice(2);});
+  smkC('cTrend',{type:'line',data:{labels:tLabels,datasets:[{label:'Negativas',data:last13.map(m=>mm[m]),borderColor:'#1B4F8A',backgroundColor:'rgba(27,79,138,.08)',fill:true,tension:.35,pointRadius:4,pointBackgroundColor:'#E53E3E',borderWidth:2}]},options:{plugins:{legend:{position:'top',align:'end'}},scales:{x:{...sng(),grid:{display:false}},y:{...sng()}}}});
+  const wcel=document.getElementById('wc');
+  if(wcel&&!wcel.dataset.b){wcel.dataset.b='1';[{w:'demora',s:17},{w:'visita falsa',s:15},{w:'domicilio',s:13},{w:'entrega',s:12},{w:'paquete',s:11},{w:'reclamo',s:11},{w:'mercadolibre',s:10},{w:'temu',s:10},{w:'sucursal',s:9},{w:'seguimiento',s:9},{w:'entrega fallida',s:8},{w:'whatsapp',s:7},{w:'dni',s:6}].forEach((x,i)=>{const sp=document.createElement('span');sp.className='wt';sp.textContent=x.w;sp.style.setProperty('--fs',x.s+'px');if(i<3){sp.style.background='rgba(0,164,153,.08)';sp.style.borderColor='rgba(0,164,153,.3)';sp.style.color='#00A499';}else if(i<6){sp.style.background='rgba(229,62,62,.06)';sp.style.borderColor='rgba(229,62,62,.2)';sp.style.color='#E53E3E';}wcel.appendChild(sp);});}
+}
+
+function rnPD(){
+  const d=F.filter(r=>r.se!=='Positivo'&&r.pd!=='Experiencia positiva');
+  const cnt={};d.forEach(r=>{if(r.pd)cnt[r.pd]=(cnt[r.pd]||0)+1;});
+  const srt=Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
+  const tot=srt.reduce((a,[,v])=>a+v,0);
+  var el=document.getElementById('pd-tot');if(el)el.textContent='· '+tot.toLocaleString('es')+' reviews';
+  const pb=document.getElementById('pdb');if(!pb)return;pb.innerHTML='';
+  const mx=srt[0]?srt[0][1]:1;
+  srt.forEach(([lbl,v])=>{
+    const p=Math.round(v/mx*100),col=PC[lbl]||'t';
+    const div=document.createElement('div');div.className='pb-s';
+    div.innerHTML=`<span class="pb-l" title="${lbl}">${lbl}</span><div class="pb-t"><div class="pb-f ${col}" style="width:${p}%"></div></div><span class="pb-n">${v.toLocaleString('es')}</span><span class="pb-p">${(v/tot*100).toFixed(1)}%</span>`;
+    div.onclick=()=>selPain(lbl);pb.appendChild(div);
+  });
+  const sel=document.getElementById('f-pdv');if(!sel)return;const prev=sel.value;
+  sel.innerHTML='<option value="">— Punto de dolor —</option>';
+  srt.forEach(([lbl])=>sel.innerHTML+=`<option value="${lbl}"${lbl===prev?' selected':''}>${lbl}</option>`);
+  if(prev)rnRVL();
+  rnPainEvo(d);rnMxCP(d);rnMxSP(d);
+}
+
+function rnPainEvo(d){
+  const cnt={};D.filter(r=>r.se!=='Positivo'&&r.pd&&r.pd!=='Experiencia positiva').forEach(r=>cnt[r.pd]=(cnt[r.pd]||0)+1);
+  const top5=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k])=>k);
+  const COLORS=['#1B4F8A','#5B8FBF','#9aa0a6','#00A499','#D0DBE8'];
+  const years=[...new Set(D.map(r=>r.yr).filter(Boolean))].sort();
+  const datasets=top5.map((p,i)=>({label:p.length>30?p.substr(0,28)+'…':p,data:years.map(y=>D.filter(r=>r.yr===y&&r.pd===p).length),borderColor:COLORS[i],backgroundColor:COLORS[i]+'22',fill:false,tension:.35,pointRadius:4,pointBackgroundColor:COLORS[i],borderWidth:2.5}));
+  smkC('cPainEvo',{type:'line',data:{labels:years.map(String),datasets},options:{plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:9,boxWidth:11}},tooltip:{mode:'index',intersect:false}},scales:{x:{...sng(),grid:{display:false}},y:{...sng(),beginAtZero:true}},interaction:{mode:'index',intersect:false}}});
+}
+
+function selPain(lbl){var sel=document.getElementById('f-pdv');if(sel)sel.value=lbl;var el=document.getElementById('pd-sel-lbl');if(el)el.textContent=lbl;rnRVL();}
+function rnRVL(){
+  const lbl=document.getElementById('f-pdv').value;const w=document.getElementById('rvl');if(!w)return;
+  if(!lbl){w.innerHTML='<div class="rv-empty">Seleccioná un punto de dolor.</div>';return;}
+  var el=document.getElementById('pd-sel-lbl');if(el)el.textContent=lbl;
+  const items=F.filter(r=>r.pd===lbl).slice(0,15);
+  if(!items.length){w.innerHTML='<div class="rv-empty">Sin reviews.</div>';return;}
+  w.innerHTML=items.map(r=>`<div class="rv${r.se==='Positivo'?' pos':''}"><div class="rv-h"><span class="rv-a">${r.au}</span><div class="rv-m"><span>${r.sc}</span><span>·</span><span>${r.f}</span></div></div><div class="rv-tx">${r.rs||r.rv}</div><div class="rv-tgs"><span class="rv-tg">${r.fu==='google_maps'?'Google Maps':'TuQuejaSuma'}</span><span class="rv-tg">${CL_LABEL[r.cn]||r.cn}</span><span class="rv-tg">★${r.st}</span></div></div>`).join('');
+}
+function rnMxCP(d){
+  const topC=['ML','Temu','Renaper/DNI','Shein','Nike','Adidas','Banco Ciudad'];
+  const pc={};d.forEach(r=>{if(r.pd&&r.pd!=='Experiencia positiva')pc[r.pd]=(pc[r.pd]||0)+1;});
+  const tp=Object.entries(pc).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k])=>k);
+  const mx2={};d.forEach(r=>{if(!topC.includes(r.cn)||!tp.includes(r.pd))return;if(!mx2[r.cn])mx2[r.cn]={};mx2[r.cn][r.pd]=(mx2[r.cn][r.pd]||0)+1;});
+  const mv=Math.max(...topC.flatMap(c=>tp.map(p=>mx2[c]?.[p]||0)),1);
+  let h='<table class="mxt"><thead><tr><th>Cliente</th>'+tp.map(p=>`<th title="${p}">${p.length>14?p.substr(0,12)+'…':p}</th>`).join('')+'</tr></thead><tbody>';
+  topC.forEach(c=>{h+=`<tr><td class="rh">${CL_LABEL[c]||c}</td>`;tp.forEach(p=>{const v=mx2[c]?.[p]||0;const alpha=v?(v/mv*.32+.04).toFixed(2):0;h+=v?`<td style="background:rgba(229,62,62,${alpha});color:${v>20?'#b91c1c':'var(--gray600)'};">${v}</td>`:`<td class="mc0">–</td>`;});h+='</tr>';});
+  var el=document.getElementById('mx-cp');if(el)el.innerHTML=h+'</tbody></table>';
+}
+function rnMxSP(d){
+  const sc2={};d.forEach(r=>sc2[r.sv]=(sc2[r.sv]||0)+1);
+  const ts=Object.entries(sc2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k);
+  const pc={};d.forEach(r=>{if(r.pd&&r.pd!=='Experiencia positiva')pc[r.pd]=(pc[r.pd]||0)+1;});
+  const tp=Object.entries(pc).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k])=>k);
+  const mx2={};d.forEach(r=>{if(!ts.includes(r.sv)||!tp.includes(r.pd))return;if(!mx2[r.sv])mx2[r.sv]={};mx2[r.sv][r.pd]=(mx2[r.sv][r.pd]||0)+1;});
+  const mv=Math.max(...ts.flatMap(s=>tp.map(p=>mx2[s]?.[p]||0)),1);
+  let h='<table class="mxt"><thead><tr><th>Servicio</th>'+tp.map(p=>`<th title="${p}">${p.length>13?p.substr(0,11)+'…':p}</th>`).join('')+'</tr></thead><tbody>';
+  ts.forEach(s=>{const sl=s.length>18?s.substr(0,16)+'…':s;h+=`<tr><td class="rh" title="${s}">${sl}</td>`;tp.forEach(p=>{const v=mx2[s]?.[p]||0;const alpha=v?(v/mv*.32+.04).toFixed(2):0;h+=v?`<td style="background:rgba(217,119,6,${alpha});color:${v>50?'#92400e':'var(--gray600)'};">${v}</td>`:`<td class="mc0">–</td>`;});h+='</tr>';});
+  var el=document.getElementById('mx-sp');if(el)el.innerHTML=h+'</tbody></table>';
+}
+
+function rnCL(){
+  const d=F;const tc={},nc={};
+  CL_ALL_KEYS.forEach(k=>{tc[k]=0;nc[k]=0;});
+  d.forEach(r=>{if(CL_ALL_KEYS.includes(r.cn)){tc[r.cn]++;if(r.se==='Negativo')nc[r.cn]++;}});
+  const identified=CL_ALL_KEYS.filter(k=>k!=='Sin identificar');
+  const top4=identified.filter(k=>tc[k]>0).sort((a,b)=>tc[b]-tc[a]).slice(0,4);
+  var el=document.getElementById('kpi-cl');
+  if(el)el.innerHTML=top4.map((c,i)=>`<div class="kc"><div class="kl">Cliente #${i+1}</div><div class="kv" style="font-size:15px;">${CL_LABEL[c]||c}</div><div class="ks">${(tc[c]||0).toLocaleString('es')} reviews · ${(nc[c]||0)} neg.</div></div>`).join('');
+  const cb=document.getElementById('cbl');if(!cb)return;cb.innerHTML='';
+  const allWithData=CL_ALL_KEYS.filter(k=>k!=='Sin identificar'&&tc[k]>0);
+  const mvId=Math.max(...allWithData.map(k=>tc[k]),1);
+  CL_GROUPS.forEach(g=>{
+    const gKeys=g.keys.filter(k=>tc[k]>0);if(!gKeys.length)return;
+    cb.innerHTML+=`<div class="cl-sec-hdr">${g.label}</div>`;
+    gKeys.sort((a,b)=>tc[b]-tc[a]).forEach(k=>{
+      const tot=tc[k],neg=nc[k];const pctBar=Math.round(tot/mvId*100);const negPct=tot?Math.round(neg/tot*100):0;
+      const negCol=negPct>90?'#E53E3E':negPct>70?'#D97706':'#059669';
+      cb.innerHTML+=`<div class="cb"><span class="cb-n">${CL_LABEL[k]||k}</span><div class="cb-t"><div class="cb-f" style="width:${pctBar}%;background:${g.color};opacity:.75;"></div></div><span class="cb-v">${tot}</span><span style="font-size:9.5px;color:${negCol};min-width:50px;text-align:right;font-family:monospace;">${negPct}% neg</span></div>`;
+    });
+  });
+  if(tc['Sin identificar']>0){cb.innerHTML+=`<div class="cl-sec-hdr" style="margin-top:7px;">Sin cliente registrado</div>`;const tot=tc['Sin identificar'],neg=nc['Sin identificar'],negPct=tot?Math.round(neg/tot*100):0;cb.innerHTML+=`<div class="cb"><span class="cb-n dim">Sin identificar</span><div class="cb-t"><div class="cb-f" style="width:100%;background:#9aa0a6;opacity:.3;"></div></div><span class="cb-v" style="color:var(--gray400);">${tot.toLocaleString('es')}</span><span style="font-size:9.5px;color:var(--gray400);min-width:50px;text-align:right;font-family:monospace;">${negPct}% neg</span></div>`;}
+  const sel=document.getElementById('f-clv');if(!sel)return;const prev=sel.value;
+  sel.innerHTML='<option value="">— Cliente —</option>';
+  CL_GROUPS.forEach(g=>{const gKeys=g.keys.filter(k=>tc[k]>0);if(!gKeys.length)return;sel.innerHTML+=`<optgroup label="${g.label}">`;gKeys.sort((a,b)=>tc[b]-tc[a]).forEach(k=>sel.innerHTML+=`<option value="${k}"${k===prev?' selected':''}>${CL_LABEL[k]||k} (${tc[k]})</option>`);sel.innerHTML+='</optgroup>';});
+  if(tc['Sin identificar']>0)sel.innerHTML+=`<option value="Sin identificar"${'Sin identificar'===prev?' selected':''}>Sin identificar (${tc['Sin identificar'].toLocaleString('es')})</option>`;
+  if(prev)rnRVCL();
+}
+function rnRVCL(){
+  const lbl=document.getElementById('f-clv').value;const w=document.getElementById('rvcl');if(!w)return;
+  if(!lbl){w.innerHTML='<div class="rv-empty">Seleccioná un cliente.</div>';return;}
+  var el=document.getElementById('cl-sel-lbl');if(el)el.textContent=CL_LABEL[lbl]||lbl;
+  const items=F.filter(r=>r.cn===lbl).slice(0,15);
+  if(!items.length){w.innerHTML='<div class="rv-empty">Sin reviews.</div>';return;}
+  w.innerHTML=items.map(r=>`<div class="rv${r.se==='Positivo'?' pos':''}"><div class="rv-h"><span class="rv-a">${r.au}</span><div class="rv-m"><span>${r.sc}</span><span>·</span><span>${r.f}</span></div></div><div class="rv-tx">${r.rs||r.rv}</div><div class="rv-tgs"><span class="rv-tg">${r.pd}</span><span class="rv-tg">${r.fu==='google_maps'?'Google Maps':'TuQuejaSuma'}</span><span class="rv-tg">★${r.st}</span></div></div>`).join('');
+}
+
+const SP={Negativo:'red',Positivo:'grn',Neutro:'amb'};
+function rnVB(){
+  const q=(document.getElementById('vbs').value||'').toLowerCase();
+  let d=F;if(q)d=d.filter(r=>(r.rv||'').toLowerCase().includes(q)||(r.au||'').toLowerCase().includes(q));
+  var el=document.getElementById('vbcnt');if(el)el.textContent=d.length.toLocaleString('es')+' registros';
+  const slice=d.slice(0,500);
+  var tb=document.getElementById('vbb');if(!tb)return;
+  tb.innerHTML=slice.map(r=>`<tr><td style="white-space:nowrap">${r.f}</td><td style="white-space:nowrap">${r.au}</td><td>${r.fu==='google_maps'?'Google Maps':'TuQuejaSuma'}</td><td>${r.sc}</td><td>${CL_LABEL[r.cn]||r.cn}</td><td>${r.sv}</td><td style="max-width:130px;white-space:normal">${r.pd}</td><td><span class="pl ${SP[r.se]||''}">${r.se}</span></td><td><span class="stars">${'★'.repeat(r.st)}</span></td><td style="font-size:11px;color:var(--gray600);max-width:300px;white-space:normal;line-height:1.45">${r.rv}</td></tr>`).join('');
+  if(d.length>500){const tr=document.createElement('tr');tr.innerHTML=`<td colspan="10" style="text-align:center;padding:11px;color:var(--gray400);font-size:11px;">Mostrando 500 de ${d.length.toLocaleString('es')}. Descargá Excel para el set completo.</td>`;tb.appendChild(tr);}
+}
+function dlXL(){
+  const q=(document.getElementById('vbs').value||'').toLowerCase();
+  let d=F;if(q)d=d.filter(r=>(r.rv||'').toLowerCase().includes(q)||(r.au||'').toLowerCase().includes(q));
+  const rows=d.map(r=>({Fecha:r.f,Autor:r.au,Fuente:r.fu==='google_maps'?'Google Maps':'TuQuejaSuma',Sucursal:r.sc,Cliente:CL_LABEL[r.cn]||r.cn,Servicio:r.sv,'Punto de Dolor':r.pd,Sentimiento:r.se,Estrellas:r.st,'Review Original':r.rv}));
+  const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Reviews OCASA');XLSX.writeFile(wb,'OCASA_Reviews.xlsx');
+}
+
+
+// ── SIGNALS EXCEL EXPORT ────────────────────────────────────────
+function dlSignalsXL() {
+  var fPais   = document.getElementById('f-pais') ? document.getElementById('f-pais').value : '';
+  var fImp    = document.getElementById('f-impact') ? document.getElementById('f-impact').value : '';
+  var fUrg    = document.getElementById('f-urgencia') ? document.getElementById('f-urgencia').value : '';
+  var fVert   = document.getElementById('f-vertical') ? document.getElementById('f-vertical').value : '';
+  var fFeat   = document.getElementById('f-feature') ? document.getElementById('f-feature').value : '';
+  var data = SIGNALS.filter(function(s) {
+    return (!fPais || s.pais === fPais) &&
+           (!fImp  || s.impacto === fImp) &&
+           (!fUrg  || s.urgencia === fUrg) &&
+           (!fVert || s.vertical === fVert) &&
+           (!fFeat || s.feature === fFeat);
+  });
+  var rows = data.map(function(s) {
+    return {
+      Fuente: s.fuente, País: s.pais, Tipo: s.tipo,
+      Feature: s.feature, Impacto: s.impacto, Urgencia: s.urgencia,
+      Segmento: s.vertical, Área: s.area,
+      Tópico: s.topico, Resumen: s.resumen, Score: s.score
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Señales CI LATAM');
+  XLSX.writeFile(wb, 'OCASA_Señales_CI_LATAM.xlsx');
+}
+
+
+// ── EXPORT SIGNALS TO EXCEL ──────────────────────────────────────
+function dlSignalsXL() {
+  var fPais   = document.getElementById('f-pais') ? document.getElementById('f-pais').value : '';
+  var fImp    = document.getElementById('f-impact') ? document.getElementById('f-impact').value : '';
+  var fUrg    = document.getElementById('f-urgencia') ? document.getElementById('f-urgencia').value : '';
+  var fVert   = document.getElementById('f-vertical') ? document.getElementById('f-vertical').value : '';
+  var fFeat   = document.getElementById('f-feature') ? document.getElementById('f-feature').value : '';
+  var data = SIGNALS.filter(function(s) {
+    return (!fPais  || s.pais     === fPais)  &&
+           (!fImp   || s.impacto  === fImp)   &&
+           (!fUrg   || s.urgencia === fUrg)   &&
+           (!fVert  || s.vertical === fVert)  &&
+           (!fFeat  || s.feature  === fFeat);
+  });
+  var rows = data.map(function(s) {
+    return {
+      Fuente:    s.fuente   || '',
+      País:      s.pais     || '',
+      Feature:   s.feature  || '',
+      Impacto:   s.impacto  || '',
+      Urgencia:  s.urgencia || '',
+      Segmento:  s.vertical || '',
+      'Tipo señal': s.tipo  || '',
+      'Área':    s.area     || '',
+      Score:     s.score    || '',
+      Tópico:    s.topico   || '',
+      'Resumen de señal': s.resumen || ''
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  // Auto column widths
+  var cols = [{wch:14},{wch:10},{wch:36},{wch:10},{wch:10},{wch:22},{wch:16},{wch:14},{wch:7},{wch:60},{wch:90}];
+  ws['!cols'] = cols;
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Señales CI LATAM');
+  XLSX.writeFile(wb, 'OCASA_Señales_CI_LATAM.xlsx');
+}
+
+// ── UNIFIED BOOTSTRAP ────────────────────────────────────────────
+(function init() {
+  // Load CI data
+  loadData().then(function(D) {
+    _D = D;
+    renderOverview(D);
+    drawMap(D.country_data);
+  });
+  // Load sentiment data
+  loadSentData();
+})();
 </script>
 </body>
 </html>
