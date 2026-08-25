@@ -540,17 +540,8 @@ function showPage(id){
   if(id==='signals'&&!_sigsOk) initSignals();
 }
 
-function parseCSV(text){
-  var lines=text.trim().split('\n');
-  var headers=lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
-  return lines.slice(1).map(line=>{
-    var vals=line.match(/"[^"]*"|[^,]*/g)||[];
-    var obj={};headers.forEach((h,i)=>obj[h]=(vals[i]||'').replace(/^"|"$/g,'').trim());return obj;
-  });
-}
-
-function buildFromCSV(csvS,csvT){
-  var senales=parseCSV(csvS),tendencias=parseCSV(csvT);
+function buildFromRows(senalesRows,tendenciasRows){
+  var senales=senalesRows,tendencias=tendenciasRows;
   var total=senales.length,muyAlto=senales.filter(r=>r.impacto==='muy_alto').length;
   var urgAlta=senales.filter(r=>r.urgencia==='alta').length;
   var fecha=(senales[0]&&senales[0].fecha_detectada)?senales[0].fecha_detectada.slice(0,10):'';
@@ -587,10 +578,15 @@ function buildFromCSV(csvS,csvT){
 async function loadData(){
   if(SHEET_SENALES_CSV&&SHEET_TENDENCIAS_CSV){
     try{
-      var proxy=u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u);
-      var [r1,r2]=await Promise.all([fetch(proxy(SHEET_SENALES_CSV)),fetch(proxy(SHEET_TENDENCIAS_CSV))]);
-      return buildFromCSV(await r1.text(),await r2.text());
-    }catch(e){console.warn('Usando datos locales:',e);}
+      var fetchCSV=function(url){
+        return new Promise(function(resolve,reject){
+          var bustedUrl=url+(url.indexOf('?')>-1?'&':'?')+'_t='+Date.now();
+          Papa.parse(bustedUrl,{download:true,header:true,skipEmptyLines:true,complete:function(r){resolve(r.data);},error:function(e){reject(e);}});
+        });
+      };
+      var results=await Promise.all([fetchCSV(SHEET_SENALES_CSV),fetchCSV(SHEET_TENDENCIAS_CSV)]);
+      return buildFromRows(results[0],results[1]);
+    }catch(e){console.warn('No se pudo leer el Sheet en vivo, usando datos embebidos:',e);}
   }
   return DATA;
 }
